@@ -1,0 +1,34 @@
+#!/bin/bash
+#SBATCH --partition=omicsbio
+#SBATCH --ntasks=1
+#SBATCH	--exclude=c660,c661
+#SBATCH --mem=110G
+#SBATCH --time=60:00:00
+#SBATCH --job-name=error_correct
+#SBATCH --workdir=/work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID
+#SBATCH --output=error_correct_%J_stdout.txt
+#SBATCH --error=error_correct_%J_stderr.txt
+#SBATCH --mail-user=lizhang12@ou.edu
+#SBATCH --mail-type=ALL
+#SBATCH --chdir=/work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID
+
+echo Running on host `hostname`
+echo Starting Time is `date`
+echo Directory is `pwd`
+starttime=$(date +"%s")
+BBMAP_PATH=/home/lizhang12/software/bbmap
+
+##Error-correct phase
+##Low-depth reads can be discarded here with the "tossjunk", "tossdepth", or "tossuncorrectable" flags.
+##For very large datasets, "prefilter=1" or "prefilter=2" can be added to conserve memory.
+${BBMAP_PATH}/tadpole.sh -Xmx90g in=SUBJECTID_1_.fastq.gz in2=SUBJECTID_2_.fastq.gz out=SUBJECTID_1C_.fastq.gz out2=SUBJECTID_2C_.fastq.gz mode=correct ecc threads=16
+
+#filtermemory=7g ordered prefilter=1
+
+echo Ending time is $(date)
+endtime=$(date +"%s")
+diff=$(($endtime - $starttime))
+echo Elapsed time is $(($diff/60)) minutes and $(($diff%60)) seconds.
+
+
+

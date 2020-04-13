@@ -1,0 +1,35 @@
+#!/bin/bash
+#SBATCH --partition=omicsbio
+#SBATCH --exclude=c660,c661
+#SBATCH --ntasks=1
+#SBATCH --time=48:00:00
+#SBATHC --cpus-per-task=19
+#SBATCH --job-name=metaspades
+#SBATCH --mem=60G
+#SBATCH --workdir=/work/TEDDY/assembly/metaspades
+#SBATCH --output=SUBJECTID_%J_stdout.txt
+#SBATCH --error=SUBJECTID_%J_stderr.txt
+#SBATCH --mail-user=lizhang12@ou.edu
+#SBATCH --mail-type=ALL
+#SBATCH --chdir=/work/TEDDY/assembly/metaspades
+
+echo "============START============="
+echo Running on host $(hostname)
+echo Starting Time is $(date)
+echo Directory is $(pwd)
+
+
+
+metaspades.py -1 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_1_.fastq.gz  -2 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_2_.fastq.gz -o SUBJECTID -t 19  
+
+# to release more disk space, I deleted all the temp files after finishing assembly
+cd SUBJECTID
+rm -rf corrected
+rm -rf K55
+rm -rf K22
+rm -rf K33
+rm assembly_graph.fastg assembly_graph_with_scaffolds.gfa scaffolds.paths contigs.fasta before_rr.fasta  first_pe_contigs.fasta
+
+
+echo Ending Time is $(date)
+echo "============END============="
