@@ -1,0 +1,11 @@
+1. Download information from Uniprot proteomes(genome assembly ID). the version is proteomes 2020_05 results, wchih includes 7,707 bacteria.
+
+'proteomes-filtered-reference_yes+AND+taxonomy__Bacteria_7707.tab'
+
+2. https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria/
+https://ftp.ncbi.nlm.nih.gov/genomes/refseq/bacteria/assembly_summary.txt
+
+GCF_009068925.1	PRJNA224116	SAMN12392359		na	98785	9	Buchnera aphidicola (Aphis gossypii)	strain=Ago-UT1		latest	Chromosome	Major	Full	10/16/2019	ASM906892v1	University of Texas, Austin	GCA_009068925.1	identical	ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/009/068/925/GCF_009068925.1_ASM906892v1
+GCF_009069125.1	PRJNA224116	SAMN12392394		na	571430	9	Buchnera aphidicola (Aphis fabae)	strain=Afa-UT1		latest	Chromosome	Major	Full	10/16/2019	ASM906912v1	University of Texas, Austin	GCA_009069125.1	identical	ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/009/069/125/GCF_009069125.1_ASM906912v1
+
+3. merge genome ID
