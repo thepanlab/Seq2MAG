@@ -10,7 +10,6 @@ study (dbGaP Study Accession: phs001443.v1.p1).
   * d. Quantification of scaffolds
   * e. ORF prediction and functional annotation with KEGG and MetaCyc
   * f. Genome binning and Quantification of MAGs
-  * g. Taxanomy analysis of MAGs
 
 
 ## Tools
@@ -193,12 +192,11 @@ $ jgi_summarize_bam_contig_depths --outputDepth output_depth.txt *_sorted.bam
 
 $ metabat -i sequence_min1000.fasta -o output_bin -a output_depth.txt -m 2000
 ```
-**3. qualtify and taxonomy annotation for the binned genomes**
+**3. qualtify for the binned genomes**
 ```bash
 $ checkm lineage_wf -f CheckM.txt -t 10 -x fa --pplacer_threads 1 input_fold_includes_Bins checkm_wf_out  
 ```
 
-## Taxanomy analysis of MAGs
 
 
 
