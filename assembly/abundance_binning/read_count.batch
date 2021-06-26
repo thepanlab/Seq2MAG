@@ -1,0 +1,65 @@
+#!/bin/bash
+#SBATCH --partition=omicsbio
+#SBATCH --ntasks=1
+#SBATCH --exclude=c661,c660,c659
+#SBATCH --cpus-per-task=19
+#SBATCH --time=48:00:00
+#SBATCH --job-name=counting
+#SBATCH --mem=90G
+#SBATCH --workdir=/work/TEDDY/abundance/SUBJECTID
+#SBATCH --output=counting_%J_stdout.txt
+#SBATCH --error=counting_%J_stderr.txt
+#SBATCH --mail-user=lizhang12@ou.edu
+#SBATCH --mail-type=ALL
+#SBATCH --chdir=/work/TEDDY/abundance/SUBJECTID
+
+
+# select scaffolds that sequence length > 1000
+pullseq -i SUBJECTID_scaffolds.fasta -m 1000 > SUBJECTID_scaffolds_min1000.fasta
+
+#creat bowtie2 index file
+bowtie2-build  SUBJECTID_scaffolds_min1000.fasta  SUBJECTID_min1000
+
+# using bowtie2 to do each sample alignment; all these samples are from a same subject
+
+while read line
+do
+bowtie2 -x SUBJECTID_min1000 -1 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/${line}_1.fastq.gz -2 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/${line}_2.fastq.gz -S ${line}.sam -p 19
+
+### count mapped reads
+/home/lizhang12/software/shrinksam/shrinksam -i ${line}.sam > ${line}_mapped.sam
+/work/TEDDY/script/add_read_count.rb ${line}_mapped.sam SUBJECTID_scaffolds_min1000.fasta > ${line}.fasta.counted
+grep -e NODE ${line}.fasta.counted  >${line}.counted.result
+sed -i "s/>//g" ${line}.counted.result
+sed -i "s/read_count_//g"  ${line}.counted.result
+python /work/TEDDY/script/summary/parse_scaffold_rpkm.py ${line}.counted.result /work/TEDDY/script/summary/total_reads $line 
+
+rm ${line}.fasta.counted
+rm ${line}_mapped.sam
+
+
+# sam to sorted bam for binning
+
+samtools view -bS ${line}.sam -@ 19 > ${line}.bam
+samtools sort ${line}.bam  -@ 19 -o ${line}_sorted > ${line}_sorted.bam
+rm ${line}.sam
+rm ${line}.bam
+done < /work/TEDDY/ncbi/dbGaP-21828/sra/new_sum/SUBJECTID_srr.txt
+
+#rm *.sam
+
+# metabat binning
+
+jgi_summarize_bam_contig_depths --outputDepth SUBJECTID_depth.txt *_sorted.bam
+metabat -i SUBJECTID_scaffolds_min1000.fasta -o SUBJECTID_bin -a SUBJECTID_depth.txt -m 2000
+
+rm *.bam
+
+#run CheckM
+module load pplacer/1.1.alpha19
+module load HMMER/3.2.1-foss-2018b
+module load Python/2.7.15-foss-2018b
+
+checkm lineage_wf -f SUBJECTID_CheckM.txt -t 19 -x fa --pplacer_threads 1 /work/TEDDY/abundance/SUBJECTID /work/TEDDY/abundance/SUBJECTID/checkm_wf_out  
+
+
