@@ -1,20 +1,21 @@
 # Metagenomics workflow from raw sequencing data to metagenome-assembled genomes (MAGs)
 
-This pipline is generated to process the metagenomics analysis for samples in TEDDY
-study.
+This workflow is generated to process the analysis for metagenomics sequencing samples in TEDDY
+study (dbGaP Study Accession: phs001443.v1.p1).
 
 **Data processing for metagenomics assembly**
   * a. Tools
-  * b. PreProcess the Raw Data
+  * b. Download and PreProcess the Raw Data
   * c. Assembly
   * d. Abundance calculation
   * e. ORF prediction and functional annotation
   * f. Genome binning
 ## Tools
-1. [**BBtools**]:https://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/installation-guide/ for raw data preprocessing 
-2. Assembly tools **metaspades** https://github.com/ablab/spades or **megahit**  https://github.com/voutcn/megahit
-3. **pullseq** to filter sequences by a minimum length or maximum length https://github.com/bcthomas/pullseq 
-4. reads mapping and calculation
+1. NCBI SRA Toolkit to download the sequencing file with sra format, and then convert it to fastq format
+2. [**BBtools**]:https://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/installation-guide/ for raw data preprocessing 
+3. Assembly tool **metaspades** https://github.com/ablab/spades
+4. **pullseq** to filter sequences by a minimum length or maximum length https://github.com/bcthomas/pullseq 
+5. reads mapping and calculation
 **bowtie** for read mappping https://github.com/BenLangmead/bowtie2
 **shrinksam** to remove sequences that failed to map to the reference https://github.com/bcthomas/shrinksam
 **add_read_count.rb** https://github.com/bcthomas/misc_scripts/tree/master/add_read_count
@@ -23,56 +24,50 @@ study.
 7. **Diamond**  alignment https://github.com/bbuchfink/diamond
 8. **Deseq** Statistical Analysis ttps://bioconductor.org/packages/release/bioc/manuals/DESeq2/man/DESeq2.pdf
 
-## PreProcess the Raw Data (BBtools)
+## Download and PreProcess the Raw Data
 
-**1. Trim adaptors**
+**1. download data from dbGaP**
 
-Besides trim adaptors, optionally, reads with Ns can be disregarded by adding “maxns=0” ;
-and reads with really low average quality can be disregarded with “maq=8”
+download data and covert to fastq format using NCBI SRA Toolkit
 ```bash
-$ bbduk.sh in=input.fastq out=output.fastq \
-                          ref=${BBtools_path}/resources/adapters.fa \
-                          ktrim=r k=23 mink=11 hdist=1 tpe tbo
-```
-**2. Remove synthetic artifacts and spike-ins by kmer-matching**
+$ prefetch --option-file sra_list.txt
 
-This will remove all reads that have a 31-mer match to PhiX, allowing one mismatch.
-The “outm” stream will catch reads that matched a reference kmers;
-“stats” will produce a report of which contaminant sequences were seen, and how many reads had them.
+# an example for `sra_list.txt`:
+SRR7560855
+SRR7560856
+SRR7560857
+```
+**2. convert sra files to fastq format**
+
+In the following assembly process, we will co-assemly the samples from the same subject.
+Therefore, we merged the fastq files from the same subject.
 ```bash
-$ bbduk.sh in=trimed.fastq out=output_u.fastq outm=output_m.fastq \
-           ref=${BBTools_path}/resources/sequencing_artifacts.fa.gz \
-           ref=${BBTools_path}/resources/phix174_ill.ref.fa.gz \
-           k=31 hdist=1 stats=stats.txt
-```
-**3. Error Correction**
+$ for i in *.sra
+  do
+    fastq-dump --split-files --gzip $i
+  done
 
-Low-depth reads can be discarded here with the”tossdepth”, or “tossuncorrectable” flags
-For very large datasets, “prefilter=1” or “prefilter=2” can be added to conserve memory
-```bash
-$ tadpole.sh -Xmx32g in= output_u.fastq out=output_tecc.fastq filtermemory=7g ordered prefilter=1
+$ cat *_1.fastq.gz >SUBJECTID_1_.fastq.gz
+$ cat *_2.fastq.gz >SUBJECTID_2_.fastq.gz
 ```
-## Assembly (Metaspades or Megahit)
+**3. PreProcess the Raw Data**
 
-Metaspades require more memorial and longer time, but can get a higher quality assembly and scaffold directly
-Megahit require less memorial and less time, but with relatively lower quality and can only assembly the reads into contig.
+The metagenomics data from this dbGaP Study (phs001443.v1.p1) is well proprocessed with quality control and removing human genome sequences.
+If your data is the raw sequencing data without preprocess, BBtools could be used to do this step.
+## Assembly
 
 **1. metaspades**
 ```bash
-$ metaspades --12  output_tecc.fastq -o  assembly_data.fasta
-#--12 means the sequencing data is in interleaved form
+$ metaspades.py -1 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_1_.fastq.gz \
+                -2 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_2_.fastq.gz \
+                -o SUBJECTID \
+                -t 20  
 ```
+The default memorial is 250G, if you need a larger one, please add a parameter setting like -m 500 to 500G.
 
-The default memorial is 250G, if you need a larger one, you can set like -m 500
-
-**2. Megahit**
+**2. N50, N90 Calculation (BBtools)**
 ```bash
-$ megahit --12  output_tecc.fastq -o assembly_data_megahit.fasta
-```
-
-**3. N50, N90 Calculation (BBtools)**
-```bash
-$ stats.sh in=assembly_data.fasta out=assembly_data_stats
+$ stats.sh in=assembly_scaffolds.fasta out=assembly_data_stats
 ```
 ## Abundance Calculation for each scaffold
 **1. fillter scaffolds**
