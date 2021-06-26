@@ -1,20 +1,24 @@
 # Metagenomics workflow from raw sequencing data to metagenome-assembled genomes (MAGs)
 
-This pipline is generated to process the metagenomics analysis for samples in TEDDY
-study.
+This workflow is generated to process the analysis for metagenomics sequencing samples in TEDDY
+study (dbGaP Study Accession: phs001443.v1.p1).
 
 **Data processing for metagenomics assembly**
   * a. Tools
-  * b. PreProcess the Raw Data
+  * b. Download and PreProcess the Raw Data
   * c. Assembly
-  * d. Abundance calculation
-  * e. ORF prediction and functional annotation
-  * f. Genome binning
+  * d. Quantification of scaffolds
+  * e. ORF prediction and functional annotation with KEGG and MetaCyc
+  * f. Genome binning and Quantification of MAGs
+  * g. Taxanomy analysis of MAGs
+
+
 ## Tools
-1. [**BBtools**]:https://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/installation-guide/ for raw data preprocessing 
-2. Assembly tools **metaspades** https://github.com/ablab/spades or **megahit**  https://github.com/voutcn/megahit
-3. **pullseq** to filter sequences by a minimum length or maximum length https://github.com/bcthomas/pullseq 
-4. reads mapping and calculation
+1. NCBI SRA Toolkit to download the sequencing file with sra format, and then convert it to fastq format
+2. [**BBtools**]:https://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/installation-guide/ for raw data preprocessing 
+3. Assembly tool **metaspades** https://github.com/ablab/spades
+4. **pullseq** to filter sequences by a minimum length or maximum length https://github.com/bcthomas/pullseq 
+5. reads mapping and calculation
 **bowtie** for read mappping https://github.com/BenLangmead/bowtie2
 **shrinksam** to remove sequences that failed to map to the reference https://github.com/bcthomas/shrinksam
 **add_read_count.rb** https://github.com/bcthomas/misc_scripts/tree/master/add_read_count
@@ -23,76 +27,70 @@ study.
 7. **Diamond**  alignment https://github.com/bbuchfink/diamond
 8. **Deseq** Statistical Analysis ttps://bioconductor.org/packages/release/bioc/manuals/DESeq2/man/DESeq2.pdf
 
-## PreProcess the Raw Data (BBtools)
+## Download and PreProcess the Raw Data
 
-**1. Trim adaptors**
+**1. download data from dbGaP**
 
-Besides trim adaptors, optionally, reads with Ns can be disregarded by adding “maxns=0” ;
-and reads with really low average quality can be disregarded with “maq=8”
+download data and covert to fastq format using NCBI SRA Toolkit
 ```bash
-$ bbduk.sh in=input.fastq out=output.fastq \
-                          ref=${BBtools_path}/resources/adapters.fa \
-                          ktrim=r k=23 mink=11 hdist=1 tpe tbo
-```
-**2. Remove synthetic artifacts and spike-ins by kmer-matching**
+$ prefetch --option-file sra_list.txt
 
-This will remove all reads that have a 31-mer match to PhiX, allowing one mismatch.
-The “outm” stream will catch reads that matched a reference kmers;
-“stats” will produce a report of which contaminant sequences were seen, and how many reads had them.
+# an example for `sra_list.txt`:
+SRR7560855
+SRR7560856
+SRR7560857
+```
+**2. convert sra files to fastq format**
+
+In the following assembly process, we will co-assemly the samples from the same subject.
+Therefore, we merged the fastq files from the same subject.
 ```bash
-$ bbduk.sh in=trimed.fastq out=output_u.fastq outm=output_m.fastq \
-           ref=${BBTools_path}/resources/sequencing_artifacts.fa.gz \
-           ref=${BBTools_path}/resources/phix174_ill.ref.fa.gz \
-           k=31 hdist=1 stats=stats.txt
-```
-**3. Error Correction**
+$ for i in *.sra
+  do
+    fastq-dump --split-files --gzip $i
+  done
 
-Low-depth reads can be discarded here with the”tossdepth”, or “tossuncorrectable” flags
-For very large datasets, “prefilter=1” or “prefilter=2” can be added to conserve memory
-```bash
-$ tadpole.sh -Xmx32g in= output_u.fastq out=output_tecc.fastq filtermemory=7g ordered prefilter=1
+$ cat *_1.fastq.gz >SUBJECTID_1.fastq.gz
+$ cat *_2.fastq.gz >SUBJECTID_2.fastq.gz
 ```
-## Assembly (Metaspades or Megahit)
+**3. PreProcess the Raw Data**
 
-Metaspades require more memorial and longer time, but can get a higher quality assembly and scaffold directly
-Megahit require less memorial and less time, but with relatively lower quality and can only assembly the reads into contig.
+The metagenomics data from this dbGaP Study (phs001443.v1.p1) is well proprocessed with quality control and removing human genome sequences.
+If your data is the raw sequencing data without preprocess, BBtools could be used to do this step.
+## Assembly
 
 **1. metaspades**
 ```bash
-$ metaspades --12  output_tecc.fastq -o  assembly_data.fasta
-#--12 means the sequencing data is in interleaved form
+$ metaspades.py -1 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_1_.fastq.gz \
+                -2 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_2_.fastq.gz \
+                -o SUBJECTID \
+                -t 20  
 ```
+The default memorial is 250G, if you need a larger one, please add a parameter setting like -m 500 to 500G.
 
-The default memorial is 250G, if you need a larger one, you can set like -m 500
-
-**2. Megahit**
+**2. N50, N90 Calculation (BBtools)**
 ```bash
-$ megahit --12  output_tecc.fastq -o assembly_data_megahit.fasta
-```
-
-**3. N50, N90 Calculation (BBtools)**
-```bash
-$ stats.sh in=assembly_data.fasta out=assembly_data_stats
+$ stats.sh in=assembly_scaffolds.fasta out=assembly_data_stats
 ```
 ## Abundance Calculation for each scaffold
 **1. fillter scaffolds**
 ```bash
 #Select scaffolds that sequence length > 1000; 
-$ pullseq -i assembly_data.fasta -m 1000 > sequence_min1000.fasta
+$ pullseq -i SUBJECTID_scaffolds.fasta -m 1000 > SUBJECTID_scaffolds_min1000.fasta
 ```
 **2. map reads into scaffolds with bowtie2**
 ```bash
 #Create bowtie2 index file
-$ bowtie2 -build  sequence_min1000.fasta sequence_min1000
+$ bowtie2-build  SUBJECTID_scaffolds_min1000.fasta  SUBJECTID_min1000
 
-#Deinterleave paired reads
-$ reformat.sh in=output_tecc.fastq out1=read1.fastq out2=read2.fastq
+# Sequence alignment for each SRR runs; the reference is the co-assemblied scaffolds of the subject where SRR runs from.
 
-#Sequence alignment
-$ bowtie2 -x sequence_min1000 -1 read1.fastq -2 read2.fastq S alignment.sam -p 19
+$ bowtie2 -x SUBJECTID_min1000 -1 SUBJECTID_eachSRR_1.fastq.gz \
+                               -2 SUBJECTID_eachSRR_2.fastq.gz \
+                               -S SUBJECTID_eachSRR_alignment.sam \
+                               -p 19
 
-# 'alignment.sam' is also the file used for genome binning
-
+# 'SUBJECTID_eachSRR_alignment.sam' is also the file used for genome binning
 # You can obtain the number of aligned reads in the output file 
 # and the number of total read can be obtained in the log file of assembly
 # Mapping rate = the number of aligned reads/ the number of total readsRPKM Calculation (shrinksam)
@@ -102,14 +100,14 @@ $ bowtie2 -x sequence_min1000 -1 read1.fastq -2 read2.fastq S alignment.sam -p 1
 # we use `shrinksam` to remove unmapped reads from bowtie2-created SAM files,
 # it will generate a SAM file with only the reads that map to an assembled scaffold.
 
-$ shrinksam -i alignment.sam > mapped.sam
+$ shrinksam -i SUBJECTID_eachSRR_alignment.sam > SUBJECTID_eachSRR_mapped.sam
 
 # Then we count the reads numbers mapped to each scaffold through `add_read_count.rb`
-$ add_read_count.rb mapped.sam sequence_min1000.fastq > mapped.fasta.counted
+$ add_read_count.rb SUBJECTID_eachSRR_mapped.sam  SUBJECTID_scaffolds_min1000.fasta > SUBJECTID_eachSRR.reads.counted
 
 # we just filter the lines containing scaffold name in the output fasta files
 
-$ grep -e ">" mapped.fasta.counted > mapped.counted.result
+$ grep -e ">" SUBJECTID_eachSRR.reads.counted > mapped.counted.result
 $ sed -i "s/>//g" mapped.counted.result
 $ sed -i "s/read_count_//g" mapped.counted.result
 
@@ -123,7 +121,7 @@ NODE_12_length_273911_cov_216.2412  read_length_150     16
 ```
 **4. RPKM Calculation for each assembled scaffold**
 ```bash
-$ Python parse_rpkm.py mapped.counted.result total_reads_file srrID
+$ Python parse_scaffold_rpkm.py mapped.counted.result total_reads_file srrID
 
 # total_reads_file is a file that includes total reads number in each sample, an example:
 10004483	SRR7768473
@@ -139,8 +137,8 @@ $ Python parse_rpkm.py mapped.counted.result total_reads_file srrID
 **Important notes: Here we only got RPKM for each scaffold; 
 For the proteins in the same scaffod, they should have the same RPKM with this scaffold.**
 
-## ORF Prediction and read counts for each ORF 
-1. ORF prediction through `Prodigal`
+## Protein prediction and read counts for each protein (ORF) 
+1. Protein prediction through `Prodigal`
 
 ```bash
 $ prodigal -i sequence_min1000.fasta -p meta -a trans_protein.fasta -f gff -o predicted.gff
@@ -158,7 +156,7 @@ This is analysis for metagenome, which is not same with metatranscriptomics.
 
 Some statistic tools, such as DEGseq2, they use the read counts (not the normalized RPKM) as the inputs
 here we add a method to get protein read counts directly from the scaffold read counts in the above.
-`We could just divide the scaffold read counts into each protein according to their CDS length`. 
+`We divide the scaffold read counts into each protein according to their CDS length`. 
 
 
 ## Functional Annotation of the predicted ORF
@@ -184,14 +182,16 @@ For more information: https://github.com/thepanlab/MetagenomicsTree/blob/master/
 ## Genome binning
 **1.sam to sorted bam for binning**
 ```bash
-$ samtools view -bS alignment.sam -@ 19 > alignment.bam
-$ samtools sort alignment.bam  -@ 19 -o alignment_sorted > alignment_sorted.bam
+$ samtools view -bS SUBJECTID_eachSRR_alignment.sam -@ 19 > SUBJECTID_eachSRR_alignment.bam
+$ samtools sort SUBJECTID_eachSRR_alignment.bam  -@ 19 -o SUBJECTID_eachSRR_sorted > SUBJECTID_eachSRR_sorted.bam
 
-# alignment.sam is from Bowtie2 output result in read mapping process.
+# SUBJECTID_eachSRR_alignment.sam is from Bowtie2 output result in read mapping process.
 ```
 **2. metabat binning**
 ```bash
 $ jgi_summarize_bam_contig_depths --outputDepth output_depth.txt *_sorted.bam
+# *_sorted.bam are the bam files from the same subjects.
+
 $ metabat -i sequence_min1000.fasta -o output_bin -a output_depth.txt -m 2000
 ```
 **3. qualtify and taxonomy annotation for the binned genomes**
@@ -199,36 +199,7 @@ $ metabat -i sequence_min1000.fasta -o output_bin -a output_depth.txt -m 2000
 $ checkm lineage_wf -f CheckM.txt -t 10 -x fa --pplacer_threads 1 input_fold_includes_Bins checkm_wf_out  
 ```
 
+## Taxanomy analysis of MAGs
 
 
 
-
-
-1. Preprocessing of raw sequencing data
-2. Metagenome assembly
-3. Quantification of scaffolds
-4. Functional annotation of proteins with UniFam and KEGG
-5. Binning and quantification of MAGs
-6. Taxanomy analysis of MAGs
-7. MetaCyc pathway reconstruction of MAGs
-
-7.1  using 'uniprot-seq-ids.fasta' as blast database, perform BLAST searches to associate protein sequences to Metacyc reactions
-
-**A common early step in performing pathway analysis of genomes and metagenomes is to associate protein sequences to MetaCyc reactions.** The Pathway Tools software infers such associations by using EC numbers, enzyme names, and Gene Ontology terms within protein annotations. Such annotations might be inferred using a variety of sequence-analysis methods.
-
-To aid researchers in associating sequences to MetaCyc reactions, MetaCyc enzymes that have a link to UniProt contain protein sequence information. It is possible to perform BLAST searches against MetaCyc proteins with sequence information using the "BLAST Search" command under the Search menu. In addition, each release of MetaCyc includes **a file that associates MetaCyc reaction IDs with the UniProt identifiers of enzymes known to catalyze those reactions. Note that not all MetaCyc reactions have EC numbers (because not all enzymes have yet been assigned EC numbers), therefore EC numbers are not a comprehensive mechanism for associating sequences to reactions.** The file is called **uniprot‑seq‑ids.dat** and is included in the MetaCyc data file distribution.
-if you want to know how to get the uniprot-seq-ids.dat, please see details in the following links:
-https://metacyc.org/MetaCycUserGuide.shtml;
-http://bioinformatics.ai.sri.com/ptools/flatfile-format.html
-
-Using DIAMOND to perform blast searches:
-```
-diamond blastp --query SUBJECTID_protein.fasta --db  uniprot-seq-ids.db.dmnd --out SUBJECTID_protein_top5hit.blst --outfmt 6 --evalue 0.001 --max-target-seqs 5 --sensitive
-
-python creat_RXN_dictionary.py SUBJECTID_protein_top5hit.blst SUBJECTID_RXN_dic
-```
-
-7.2 associate Metacyc reactions to Metacyc pathways
-login to Metacyc database, and then creat your own specical smartable of 'All pathways of MetaCyc' (you can add columns in this samrtable to get more information of each pathway and download this smartable). 
-https://metacyc.org/;
-https://metacyc.org/PToolsWebsiteHowto.shtml#node_sec_6
