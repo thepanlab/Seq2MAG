@@ -47,8 +47,8 @@ $ for i in *.sra
     fastq-dump --split-files --gzip $i
   done
 
-$ cat *_1.fastq.gz >SUBJECTID_1_.fastq.gz
-$ cat *_2.fastq.gz >SUBJECTID_2_.fastq.gz
+$ cat *_1.fastq.gz >SUBJECTID_1.fastq.gz
+$ cat *_2.fastq.gz >SUBJECTID_2.fastq.gz
 ```
 **3. PreProcess the Raw Data**
 
@@ -73,21 +73,21 @@ $ stats.sh in=assembly_scaffolds.fasta out=assembly_data_stats
 **1. fillter scaffolds**
 ```bash
 #Select scaffolds that sequence length > 1000; 
-$ pullseq -i assembly_data.fasta -m 1000 > sequence_min1000.fasta
+$ pullseq -i SUBJECTID_scaffolds.fasta -m 1000 > SUBJECTID_scaffolds_min1000.fasta
 ```
 **2. map reads into scaffolds with bowtie2**
 ```bash
 #Create bowtie2 index file
-$ bowtie2 -build  sequence_min1000.fasta sequence_min1000
+$ bowtie2-build  SUBJECTID_scaffolds_min1000.fasta  SUBJECTID_min1000
 
-#Deinterleave paired reads
-$ reformat.sh in=output_tecc.fastq out1=read1.fastq out2=read2.fastq
+# Sequence alignment for each SRR runs; the reference is the co-assemblied scaffolds of the subject where SRR runs from.
 
-#Sequence alignment
-$ bowtie2 -x sequence_min1000 -1 read1.fastq -2 read2.fastq S alignment.sam -p 19
+$ bowtie2 -x SUBJECTID_min1000 -1 SUBJECTID_eachSRR_1.fastq.gz \
+                               -2 SUBJECTID_eachSRR_2.fastq.gz \
+                               -S SUBJECTID_eachSRR_alignment.sam \
+                               -p 19
 
-# 'alignment.sam' is also the file used for genome binning
-
+# 'SUBJECTID_eachSRR_alignment.sam' is also the file used for genome binning
 # You can obtain the number of aligned reads in the output file 
 # and the number of total read can be obtained in the log file of assembly
 # Mapping rate = the number of aligned reads/ the number of total readsRPKM Calculation (shrinksam)
@@ -97,14 +97,14 @@ $ bowtie2 -x sequence_min1000 -1 read1.fastq -2 read2.fastq S alignment.sam -p 1
 # we use `shrinksam` to remove unmapped reads from bowtie2-created SAM files,
 # it will generate a SAM file with only the reads that map to an assembled scaffold.
 
-$ shrinksam -i alignment.sam > mapped.sam
+$ shrinksam -i SUBJECTID_eachSRR_alignment.sam > SUBJECTID_eachSRR_mapped.sam
 
 # Then we count the reads numbers mapped to each scaffold through `add_read_count.rb`
-$ add_read_count.rb mapped.sam sequence_min1000.fastq > mapped.fasta.counted
+$ add_read_count.rb SUBJECTID_eachSRR_mapped.sam  SUBJECTID_scaffolds_min1000.fasta > SUBJECTID_eachSRR.reads.counted
 
 # we just filter the lines containing scaffold name in the output fasta files
 
-$ grep -e ">" mapped.fasta.counted > mapped.counted.result
+$ grep -e ">" SUBJECTID_eachSRR.reads.counted > mapped.counted.result
 $ sed -i "s/>//g" mapped.counted.result
 $ sed -i "s/read_count_//g" mapped.counted.result
 
@@ -134,8 +134,8 @@ $ Python parse_rpkm.py mapped.counted.result total_reads_file srrID
 **Important notes: Here we only got RPKM for each scaffold; 
 For the proteins in the same scaffod, they should have the same RPKM with this scaffold.**
 
-## ORF Prediction and read counts for each ORF 
-1. ORF prediction through `Prodigal`
+## Protein prediction and read counts for each protein (ORF) 
+1. Protein prediction through `Prodigal`
 
 ```bash
 $ prodigal -i sequence_min1000.fasta -p meta -a trans_protein.fasta -f gff -o predicted.gff
@@ -153,7 +153,7 @@ This is analysis for metagenome, which is not same with metatranscriptomics.
 
 Some statistic tools, such as DEGseq2, they use the read counts (not the normalized RPKM) as the inputs
 here we add a method to get protein read counts directly from the scaffold read counts in the above.
-`We could just divide the scaffold read counts into each protein according to their CDS length`. 
+`We divide the scaffold read counts into each protein according to their CDS length`. 
 
 
 ## Functional Annotation of the predicted ORF
@@ -179,14 +179,16 @@ For more information: https://github.com/thepanlab/MetagenomicsTree/blob/master/
 ## Genome binning
 **1.sam to sorted bam for binning**
 ```bash
-$ samtools view -bS alignment.sam -@ 19 > alignment.bam
-$ samtools sort alignment.bam  -@ 19 -o alignment_sorted > alignment_sorted.bam
+$ samtools view -bS SUBJECTID_eachSRR_alignment.sam -@ 19 > SUBJECTID_eachSRR_alignment.bam
+$ samtools sort SUBJECTID_eachSRR_alignment.bam  -@ 19 -o SUBJECTID_eachSRR_sorted > SUBJECTID_eachSRR_sorted.bam
 
-# alignment.sam is from Bowtie2 output result in read mapping process.
+# SUBJECTID_eachSRR_alignment.sam is from Bowtie2 output result in read mapping process.
 ```
 **2. metabat binning**
 ```bash
 $ jgi_summarize_bam_contig_depths --outputDepth output_depth.txt *_sorted.bam
+# *_sorted.bam are the bam files from the same subjects.
+
 $ metabat -i sequence_min1000.fasta -o output_bin -a output_depth.txt -m 2000
 ```
 **3. qualtify and taxonomy annotation for the binned genomes**
