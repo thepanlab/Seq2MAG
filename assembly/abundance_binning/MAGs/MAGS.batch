@@ -1,0 +1,45 @@
+#!/bin/bash
+#SBATCH --partition=omicsbio
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=1:00:00
+#SBATCH --job-name=counting
+#SBATCH --mem=10G
+#SBATCH --workdir=/work/TEDDY/abundance/MAGs
+#SBATCH --output=counting_%J_stdout.txt
+#SBATCH --error=counting_%J_stderr.txt
+#SBATCH --mail-user=lizhang12@ou.edu
+#SBATCH --mail-type=END
+#SBATCH --chdir=/work/TEDDY/abundance/MAGs
+
+module load   pandas/0.18.1-intel-2016a-Python-2.7.12 
+
+while read line
+do
+
+#grep -e ">" /scratch/lizhang12/genome/TEDDY_963663_*.fa >SUBJECTID_tmp
+#sed -i "s/\/scratch\/lizhang12\/genome\/TEDDY_//g" SUBJECTID_tmp
+#sed -i "s/:>/\t/g" SUBJECID_tmp
+
+grep -e "^SUBJECTID_bin" /work/TEDDY/abundance/MAGs/TEDDY_36736.scaffold.tsv  >SUBJECTID_MAGs
+
+
+python /work/TEDDY/script/summary/abundance_binning/MAGs/parse_MAGs_rpkm.py /work/TEDDY/abundance/finished/SUBJECTID/${line}.counted.result /work/TEDDY/script/summary/total_reads $line SUBJECTID_MAGs
+
+# python /work/TEDDY/script/summary/abundance_binning/MAGs/parse_MAGs_rpkm.py  /work/TEDDY/abundance/finished/963663/SRR7557899.counted.result /work/TEDDY/script/summary/total_reads SRR7557899 963663_tmp
+
+
+done < /work/TEDDY/ncbi/dbGaP-21828/sra/new_sum/SUBJECTID.txt
+
+#merge
+echo "SRR" >SUBJECTID_list
+ls SUBJECTID_MAGs*_rpkm.tsv | sort -n >>SUBJECTID_list
+
+python /work/TEDDY/abundance/MAGs/merge.py SUBJECTID_list SUBJECTID_binning.tsv /work/TEDDY/abundance/MAGs
+
+
+# move files
+
+mv SUBJECTID_*_rpkm.tsv each_sample/.
+mv SUBJECTID_binning.tsv each_subject/.
+
