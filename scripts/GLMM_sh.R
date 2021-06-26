@@ -100,6 +100,7 @@ for(cluster in 1:ncol(data)){
   }
 }
 
+
 # row names of the results
 row.names(all_result)= colnames(data)
 
