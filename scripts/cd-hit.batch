@@ -12,6 +12,7 @@
 #SBATCH --mail-type=ALL
 #SBATCH --chdir=/work/TEDDY/cluster/cd-hit/full/id90_cov90
 
+# hierarchical clustering of the proteins using CD-HIT
 
 # 90% identity
 cd-hit -i /work/TEDDY/cluster/cd-hit/full/sequence/full_length_min50.fa -o nr_90_0.9 -c 0.9 -n 5  -d 0  -g 1 -p 1 -T 35 -M 0 -G 0 -aS 0.9 -aL 0.9 > nr_90_0.9.log
