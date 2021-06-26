@@ -1,0 +1,49 @@
+#!/bin/bash
+#SBATCH --partition=omicsbio
+#SBATCH --ntasks=1
+#SBATCH --time=20:00:00
+#SBATCH --job-name=drep
+#SBATCH --mem=10G
+#SBATCH --output=compare_%J_stdout.txt
+#SBATCH --error=compare_%J_stderr.txt
+#SBATCH --mail-user=lizhang12@ou.edu
+#SBATCH --mail-type=ALL
+#SBATCH --chdir=/work/TEDDY/binning/drep/compare
+
+
+#download HGM
+mkdir /scratch/lizhang12/HGM
+cd /scratch/lizhang12/HGM
+
+wget -c ftp://ftp.ebi.ac.uk/pub/databases/metagenomics/umgs_analyses/mags-gut_qs50.tar.gz
+tar -zxvvf mags-gut_qs50.tar.gz
+
+wget -c ftp://ftp.ebi.ac.uk/pub/databases/metagenomics/umgs_analyses/mags-gut_qs50_checkm.tab
+
+
+# 39891 high quality MAGs
+awk '{ if($3 > 90 && $4 < 5) { print }}' mags-gut_qs50_checkm.tab >HGM_high_quality.list
+
+
+cd /scratch/lizhang12/HGM
+mkdir Hgenomes
+awk '{ if($3 > 90 && $4 < 5) { print $1}}' mags-gut_qs50_checkm.tab >HGM_high_quality.list
+
+while read line
+do
+mv */${line}.fa Hgenomes/.
+
+done <HGM_high_quality.list
+ls /scratch/lizhang12/HGM/Hgenomes/*.fa >HGM_sketch_list
+
+
+# sketch 883 species and EBI species
+mash sketch -l /work/TEDDY/binning/drep/compare/specie883.list
+mash sketch -l /scratch/lizhang12/HGM/HGM_sketch_list
+mash dist -p 40 -d 0.2 /scratch/lizhang12/HGM/HGM_sketch_list.msh specie883.list.msh >specie883_HGM_0.8.dist
+
+
+# sketch IGGdb species
+mash sketch -l igg_gut_2935.list
+mash dist -p 40 -d 0.2 igg_gut_2935.list.msh specie883.list.msh >specie883_IGG_0.8.dist
+

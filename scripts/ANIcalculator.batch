@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH --partition=omicsbio
+#SBATCH --ntasks=1
+#SBATCH --time=48:00:00
+#SBATCH --job-name=REPLACE
+#SBATCH --mem=2G
+#SBATCH --workdir=/work/TEDDY/binning/drep/ANI/
+#SBATCH --output=REPLACE_%J_stdout.txt
+#SBATCH --error=REPLACE_%J_stderr.txt
+#SBATCH --mail-user=lizhang12@ou.edu
+#SBATCH --mail-type=ALL
+#SBATCH --chdir=/work/TEDDY/binning/drep/ANI/
+
+
+ANIcalculator -genome1fna genome1.fasta -genome2fna genome2.fasta -outfile genome1_vs_genome2.gANI -outdir gANI_outdir
