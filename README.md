@@ -175,7 +175,7 @@ $ diamond blastp --query trans_protein.fasta \
                  
 $ python creat_RXN_dictionary.py Metacyc_protein_top5hit.blst Metacyc_protein_RXN_key_sen
 ```
-For more information: https://github.com/thepanlab/MetagenomicsTree/blob/master/metacyc/metacyc_annotation.md
+For more information: https://github.com/thepanlab/Seq2MAG/blob/master/annotation/metacyc/metacyc_annotation.md
 
 ## Genome binning
 **1.sam to sorted bam for binning**
