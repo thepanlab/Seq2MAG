@@ -1,0 +1,27 @@
+#!/bin/bash
+#SBATCH --partition=omicsbio
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=35
+#SBATCH	--exclude=c660,c651
+#SBATCH --time=240:00:00
+#SBATCH --job-name=CD-HIT
+#SBATCH --mem=160G
+#SBATCH --output=cdhit90_0.9_%J_stdout.txt
+#SBATCH --error=cdhit90_0.9_%J_stderr.txt
+#SBATCH --mail-user=lizhang12@ou.edu
+#SBATCH --mail-type=ALL
+#SBATCH --chdir=/work/TEDDY/cluster/cd-hit/full/id90_cov90
+
+
+# 90% identity
+cd-hit -i /work/TEDDY/cluster/cd-hit/full/sequence/full_length_min50.fa -o nr_90_0.9 -c 0.9 -n 5  -d 0  -g 1 -p 1 -T 35 -M 0 -G 0 -aS 0.9 -aL 0.9 > nr_90_0.9.log
+cd-hit-2d -i /work/TEDDY/cluster/cd-hit/full/id90_cov90/nr_90_0.9 -i2 /work/TEDDY/cluster/cd-hit/fragment/fragment_min50.fa -o nr_90_0.9_fragment -c 0.9 -n 5  -d 0  -g 1 -p 1 -T 35 -M 0 -G 0 -aS 0.9 > nr_90_0.9_fragment.log
+
+# 65% identity
+cd-hit -i /work/TEDDY/cluster/cd-hit/full/id90_cov90/nr_90_0.9 -o nr_65_0.9 -c 0.65 -n 4  -d 0  -g 1 -p 1 -T 35 -M 0 -G 0 -aS 0.9 -aL 0.9 > nr_65_0.9.log
+cd-hit-2d -i /work/TEDDY/cluster/cd-hit/full/id90_cov90/sec_id65_cv90/nr_65_0.9 -i2 /work/TEDDY/cluster/cd-hit/full/id90_cov90/first_merge/nr_90_0.9_fragment -o nr_65_0.9_fragment -c 0.65 -n 4  -d 0  -g 1 -p 1 -T 40 -M 0 -G 0 -aS 0.9 > nr_65_0.9_fragment.log
+
+
+# 40% identity
+cd-hit -i /work/TEDDY/cluster/cd-hit/full/id90_cov90/sec_id65_cv90/nr_65_0.9 -o nr_40_0.9 -c 0.4 -n 2  -d 0  -g 1 -p 1 -T 35 -M 0 -G 0 -aS 0.9 -aL 0.9 > nr_40_0.9.log
+cd-hit-2d -i /work/TEDDY/cluster/cd-hit/full/id90_cov90/third_id40_cov90/nr_40_0.9 -i2 /work/TEDDY/cluster/cd-hit/full/id90_cov90/sec_merge/nr_65_0.9_fragment -o nr_40_0.9_fragment -c 0.4 -n 2  -d 0  -g 1 -p 1 -T 30 -M 0 -G 0 -aS 0.9 > nr_40_0.9_fragment.log
