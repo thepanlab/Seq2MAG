@@ -25,7 +25,6 @@ study (dbGaP Study Accession: phs001443.v1.p1).
 5. **Prodigal** for ORF prediction https://github.com/hyattpd/Prodigal
 6. **KofamScan** KEGG ko term annotation  https://github.com/takaram/kofam_scan
 7. **Diamond**  alignment https://github.com/bbuchfink/diamond
-8. **Deseq** Statistical Analysis ttps://bioconductor.org/packages/release/bioc/manuals/DESeq2/man/DESeq2.pdf
 
 ## Download and PreProcess the Raw Data
 
