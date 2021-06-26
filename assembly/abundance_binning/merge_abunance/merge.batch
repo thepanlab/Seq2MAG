@@ -1,0 +1,31 @@
+#!/bin/bash
+#SBATCH --partition=omicsbio
+#SBATCH --ntasks=1
+#SBATCH --time=2:00:00
+#SBATHC --cpus-per-task=1
+#SBATCH --job-name=merge
+#SBATCH --mem=5G
+#SBATCH --workdir=/work/TEDDY/abundance/finished/SUBJECTID/
+#SBATCH --output=SUBJECTID_%J_stdout.txt
+#SBATCH --error=SUBJECTID_%J_stderr.txt
+#SBATCH --mail-user=lizhang12@ou.edu
+#SBATCH --mail-type=ALL
+#SBATCH --chdir=/work/TEDDY/abundance/finished/SUBJECTID/
+
+
+echo "============START============="
+echo Running on host $(hostname)
+echo Starting Time is $(date)
+echo Directory is $(pwd)
+module load   pandas/0.18.1-intel-2016a-Python-2.7.12 
+for i in `ls *rpkm.txt`
+do
+	`grep -e $i /work/TEDDY/script/summary/abundance_binning/merge_abunance/rename_month.sh`
+done
+
+echo "SRR" >SUBJECTID_rpkm
+ls *.rpkm | sort -n >>SUBJECTID_rpkm
+
+python /work/TEDDY/script/summary/abundance_binning/merge_abunance/merge.py SUBJECTID_rpkm SUBJECTID_rpkm.tsv /work/TEDDY/abundance/finished/SUBJECTID/
+
+sed -i "s/NODE/SUBJECTID_NODE/g" SUBJECTID_rpkm.tsv
