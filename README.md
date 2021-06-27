@@ -28,7 +28,7 @@ study (dbGaP Study Accession: phs001443.v1.p1).
 ## Download and PreProcess the Raw Data
 
 We downloaded sequencing data from each subject separetly and covert it to fastq format using NCBI SRA Toolkit,
-then co-assemblied the samples in each subject. The above steps were run using script `assembly.sh` 
+then co-assemblied the samples in each subject. The above steps were run using script `assembly.batch` 
 on OU OSCER server. The instructions of this script are as follows.
 
 **Requirments:**
@@ -81,7 +81,7 @@ In this directory,  `scaffolds.fasta` file is the co-assemblied metagenome in th
 
 ##
 
-**Script `abundanceANDbinning.batch` is to calculate the read counts and RPKM abundance for each scaffold in a subject, 
+**Script `abundanceANDbinning.batch` is used to calculate the read counts and RPKM abundance for each scaffold in a subject, 
 and then do genome binning. The instructions of this batch script are as follows.**
 
 **Requirments:**
@@ -254,5 +254,42 @@ $ python creat_RXN_dictionary.py Metacyc_protein_top5hit.blst Metacyc_protein_RX
 
 ## Protein clustering ##
 
+`cd-hit.batch` was used to perform hierarchical clustering of all proteins on OU OSCER server.
+The instructions of this script are as follows.
 
+**Requirments:**
+
+* CD-HIT (tested v4.8.1)
+```bash
+# 90% identity
+$ cd-hit -i full_length_min50.fa \
+         -o nr_90_0.9 \
+         -c 0.9 -n 5  -d 0  -g 1 -p 1 -T 35 -M 0 -G 0 -aS 0.9 -aL 0.9 > nr_90_0.9.log
+         
+$ cd-hit-2d -i nr_90_0.9 \
+            -i2 fragment_min50.fa \
+            -o nr_90_0.9_fragment \
+            -c 0.9 -n 5  -d 0  -g 1 -p 1 -T 35 -M 0 -G 0 -aS 0.9 > nr_90_0.9_fragment.log
+
+# 65% identity
+$ cd-hit -i nr_90_0.9 \
+       -o nr_65_0.9 \
+       -c 0.65 -n 4  -d 0  -g 1 -p 1 -T 35 -M 0 -G 0 -aS 0.9 -aL 0.9 > nr_65_0.9.log
+$ cd-hit-2d -i nr_65_0.9 \
+          -i2 nr_90_0.9_fragment \
+          -o nr_65_0.9_fragment \
+          -c 0.65 -n 4  -d 0  -g 1 -p 1 -T 40 -M 0 -G 0 -aS 0.9 > nr_65_0.9_fragment.log
+
+
+# 40% identity
+$ cd-hit -i nr_65_0.9 \
+       -o nr_40_0.9 \
+       -c 0.4 -n 2  -d 0  -g 1 -p 1 -T 35 -M 0 -G 0 -aS 0.9 -aL 0.9 > nr_40_0.9.log
+
+$ cd-hit-2d -i nr_40_0.9 \
+            -i2 nr_65_0.9_fragment \
+            -o nr_40_0.9_fragment \
+            -c 0.4 -n 2  -d 0  -g 1 -p 1 -T 30 -M 0 -G 0 -aS 0.9 > nr_40_0.9_fragment.log
+
+```
 
