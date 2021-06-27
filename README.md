@@ -14,22 +14,25 @@ study (dbGaP Study Accession: phs001443.v1.p1).
 
 ## Tools
 1. NCBI SRA Toolkit to download the sequencing file with sra format, and then convert it to fastq format
-2. [**BBtools**]:https://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/installation-guide/ for raw data preprocessing 
-3. Assembly tool **metaspades** https://github.com/ablab/spades
-4. **pullseq** to filter sequences by a minimum length or maximum length https://github.com/bcthomas/pullseq 
-5. reads mapping and calculation
-**bowtie** for read mappping https://github.com/BenLangmead/bowtie2
+2. Assembly tool **metaspades** https://github.com/ablab/spades
+3. **pullseq** to filter sequences by a minimum length or maximum length https://github.com/bcthomas/pullseq 
+4. reads mapping and calculation: **bowtie2** for read mappping https://github.com/BenLangmead/bowtie2
 **shrinksam** to remove sequences that failed to map to the reference https://github.com/bcthomas/shrinksam
 **add_read_count.rb** https://github.com/bcthomas/misc_scripts/tree/master/add_read_count
 5. **Prodigal** for ORF prediction https://github.com/hyattpd/Prodigal
 6. **KofamScan** KEGG ko term annotation  https://github.com/takaram/kofam_scan
 7. **Diamond**  alignment https://github.com/bbuchfink/diamond
+8. [**BBtools**]:https://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/installation-guide/
+
 
 ## Download and PreProcess the Raw Data
 
-**1. download data from dbGaP**
-
 download data and covert to fastq format using NCBI SRA Toolkit
+
+**Requirments:**
+
+* sratoolkit (tested v2.9.6-1)
+**1. download data from dbGaP**
 ```bash
 $ prefetch --option-file sra_list.txt
 
@@ -39,9 +42,6 @@ SRR7560856
 SRR7560857
 ```
 **2. convert sra files to fastq format**
-
-In the following assembly process, we will co-assemly the samples from the same subject.
-Therefore, we merged the fastq files from the same subject.
 ```bash
 $ for i in *.sra
   do
@@ -51,6 +51,9 @@ $ for i in *.sra
 $ cat *_1.fastq.gz >SUBJECTID_1.fastq.gz
 $ cat *_2.fastq.gz >SUBJECTID_2.fastq.gz
 ```
+In the following assembly process, we will co-assemly the samples from the same subject.
+Therefore, we also merged the fastq files from the same subject.
+
 **3. PreProcess the Raw Data**
 
 The metagenomics data from this dbGaP Study (phs001443.v1.p1) is well proprocessed with quality control and removing human genome sequences.
