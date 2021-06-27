@@ -64,9 +64,7 @@ Therefore, we also merged the fastq files from the same subject.
 
 The metagenomics data from this dbGaP Study (phs001443.v1.p1) is well proprocessed with quality control and removing human genome sequences.
 If your data is the raw sequencing data without preprocess, BBtools could be used to do this step.
-## Assembly
-
-**1. metaspades**
+## Assembly using metaspades ##
 ```bash
 $ metaspades.py -1 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_1_.fastq.gz \
                 -2 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_2_.fastq.gz \
