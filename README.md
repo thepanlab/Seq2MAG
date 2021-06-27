@@ -10,6 +10,7 @@ study (dbGaP Study Accession: phs001443.v1.p1).
   * d. Quantification of scaffolds
   * e. ORF prediction and functional annotation with KEGG and MetaCyc
   * f. Genome binning and Quantification of MAGs
+  * g. Protein clustering
 
 
 ## Tools
@@ -91,6 +92,7 @@ and then do genome binning. The instructions of this batch script are as follows
 * shrinksam (tested v0.9.0)
 * MetaBAT 2 (tested v2.12.1)
 * CheckM (tested v1.1.2)
+* add_read_count.rb
 * HMMER (tested 3.2.1)
 * pplacer (tested 1.1.alpha19)
 * python v2.7
@@ -188,7 +190,7 @@ $ samtools sort SUBJECTID_eachSRR_alignment.bam  -@ 19 -o SUBJECTID_eachSRR_sort
 $ jgi_summarize_bam_contig_depths --outputDepth output_depth.txt *_sorted.bam
 # *_sorted.bam are the bam files from the same subjects.
 
-$ metabat -i sequence_min1000.fasta -o output_bin -a output_depth.txt -m 2000
+$ metabat -i SUBJECTID_scaffolds_min1000.fasta -o output_bin -a output_depth.txt -m 2000
 
 # output_bins is the directory including all the binned genomes, each genome in a file.
 ```
@@ -199,15 +201,22 @@ $ checkm lineage_wf -f CheckM.txt -t 10 -x fa --pplacer_threads 1 output_bins ch
 
 
 ## Protein prediction and read counts for each protein (ORF) 
-1. Protein prediction through `Prodigal`
+**1. Protein prediction through `Prodigal`**
+
+The batch script is `prodigal.batch`, The Requirment is **Prodigal v2.6.3**
 
 ```bash
-$ prodigal -i sequence_min1000.fasta -p meta -a trans_protein.fasta -f gff -o predicted.gff
+$ prodigal -i SUBJECTID_scaffolds_min1000.fasta \
+           -a SUBJECTID_scaffolds_min1000_protein.fasta \
+           -p meta -f gff -o SUBJECTID_predicted.gff
 
+
+# input file is the scaffolds of each subject `SUBJECTID_scaffolds_min1000.fast`
 # two output files: 
-trans_protein.fasta (protein translations file); 
-predicted.gff (inforamtion for each CDS, we will use the CDS length to get the protein abundance) 
+`SUBJECTID_scaffolds_min1000_protein.fasta` (protein translations file); 
+`SUBJECTID_predicted.gff` (inforamtion for each CDS, we will use the CDS length to get the protein abundance) 
 ```
+
 **2.1 Map scaffold RPKM to each protein that located in this scaffold.**
 
 The principle is that for the proteins in the same scaffod, they should have the same RPKM with this scaffold. 
@@ -224,23 +233,26 @@ here we add a method to get protein read counts directly from the scaffold read 
 
 **1.	KEGG annotation through `KofamScan`**
 ```bash
-$ kofam_scan/exec_annotation -o Coassembly_KO.txt trans_protein.fasta --tmp-dir tmp_KO --cpu 10
+$ kofam_scan/exec_annotation -o SUBJECTID_kofam.txt SUBJECTID_scaffolds_min1000_protein.fasta --tmp-dir tmp_dirSUBJECTID --cpu 10 
 ```
 map the annotated KO term into pathways through `KEGG Mapper`: https://www.genome.jp/kegg/tool/map_pathway.html
 
-**2. Metacyc reaction annotation by aligning database from Metacyc pathway database;
-`diamond` was used to do sequence alignment**
+**2. Metacyc reaction annotation by aligning database from Metacyc pathway database**
+
+* `diamond v0.9.26.127` was used to do sequence alignment, 
+* the alignment database is obtained from metacyc software `The Pathway Tools software`
+* For more information about Metacyc annotation: https://github.com/thepanlab/Seq2MAG/blob/master/annotation/metacyc/metacyc_annotation.md
+
 ```bash
-$ diamond blastp --query trans_protein.fasta \
+$ diamond blastp --query SUBJECTID_scaffolds_min1000_protein.fasta \
                  --db uniprot-seq-ids.fasta \
                  --out Metacyc_protein_top5hit.blst \
                  --outfmt 6  --evalue 0.001 --max-target-seqs 5 --sensitive
                  
 $ python creat_RXN_dictionary.py Metacyc_protein_top5hit.blst Metacyc_protein_RXN_key_sen
 ```
-For more information: https://github.com/thepanlab/Seq2MAG/blob/master/annotation/metacyc/metacyc_annotation.md
 
-
+## Protein clustering ##
 
 
 
