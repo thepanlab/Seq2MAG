@@ -290,7 +290,8 @@ $ cd-hit-2d -i nr_40_0.9 \
             -c 0.4 -n 2  -d 0  -g 1 -p 1 -T 30 -M 0 -G 0 -aS 0.9 > nr_40_0.9_fragment.log
 
 ```
-
+In the end, CD_HIT scripts `clstr_merge.pl ` was used to merge the full-length and fragment clusters in each step,
+and `clstr_rev.pl` was used to merge the clusters in three levels.
 
 ## Other scripts ##
 * `parse_protein_length.py` get each protein length from .gff files.
