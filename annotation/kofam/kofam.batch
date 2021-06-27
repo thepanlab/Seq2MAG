@@ -18,13 +18,9 @@ module load GNU/4.9.3-2.25
 export OMP_NUM_THREADS=10
 
 
-#module load  parallel-netcdf/1.8.1-intel-2016a
-##./exec_annotation -o result.txt proteins.fasta 
-#/work/omicsbio/lizhang12/unifam/kofamscan/exec_annotation -o stage1_proteins_kofam.txt /work/TEDDY/cluster/mmseqs/stage1_proteins.fasta --tmp-dir=tmp_dir --cpu=20 
 
-/work/omicsbio/lizhang12/unifam/kofamscan/exec_annotation -o SUBJECTID_kofam.txt /work/TEDDY/cluster/scaffolds/SUBJECTID_scaffolds_min1000_protein.fasta --tmp-dir tmp_dirSUBJECTID --cpu 10 
+/work/omicsbio/lizhang12/kofamscan/exec_annotation -o SUBJECTID_kofam.txt SUBJECTID_scaffolds_min1000_protein.fasta --tmp-dir tmp_dirSUBJECTID --cpu 10 
 
 rm -rf tmp_dirSUBJECTID
 
-##/work/omicsbio/lizhang12/unifam/kofamscan/exec_annotation -o result_mapper.txt --format=mapper  --tmp-dir=tmp_dir
  
