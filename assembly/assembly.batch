@@ -1,0 +1,44 @@
+#!/bin/bash
+#SBATCH --partition=omicsbio
+#SBATCH --exclude=c660,c661
+#SBATCH --ntasks=1
+#SBATCH --time=72:00:00
+#SBATCH --job-name=metaspades
+#SBATCH --mem=80G
+#SBATCH --output=SUBJECTID_%J_stdout.txt
+#SBATCH --error=SUBJECTID_%J_stderr.txt
+#SBATCH --mail-user=lizhang12@ou.edu
+#SBATCH --mail-type=ALL
+#SBATCH --chdir=/your/work/directory/assembly
+
+echo "============START============="
+echo Running on host $(hostname)
+echo Starting Time is $(date)
+echo Directory is $(pwd)
+
+# download sra
+
+prefetch --option-file sra_list.txt
+
+# sra_list.txt includes the SRR IDs for all sample sequencing runs from same subject 
+# an example for `sra_list.txt`:
+# SRR7560855
+# SRR7560856
+# SRR7560857
+
+# convert the above downloaded sra format files into fastq format
+for i in *.sra
+  do
+    fastq-dump --split-files --gzip $i
+  done
+
+cat *_1.fastq.gz >SUBJECTID_1.fastq.gz
+cat *_2.fastq.gz >SUBJECTID_2.fastq.gz
+
+
+# co-assembly using metaspades 
+metaspades.py -1 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_1_.fastq.gz  -2 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_2_.fastq.gz -o SUBJECTID -t 20  
+
+
+echo Ending Time is $(date)
+echo "============END============="
