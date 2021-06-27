@@ -22,21 +22,25 @@ study (dbGaP Study Accession: phs001443.v1.p1).
 5. **Prodigal** for ORF prediction https://github.com/hyattpd/Prodigal
 6. **KofamScan** KEGG ko term annotation  https://github.com/takaram/kofam_scan
 7. **Diamond**  alignment https://github.com/bbuchfink/diamond
-8. [**BBtools**]:https://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/installation-guide/
-
+8. **BBtools** https://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/installation-guide/
 
 ## Download and PreProcess the Raw Data
 
-download data and covert to fastq format using NCBI SRA Toolkit
+We downloaded sequencing data from each subject separetly and covert it to fastq format using NCBI SRA Toolkit,
+then co-assemblied the samples in each subject. The above steps were run using script `assembly.sh` 
+on OU OSCER server. The instructions of this script are as follows.
 
 **Requirments:**
 
 * sratoolkit (tested v2.9.6-1)
+* SPAdes (tested v3.13.1)
+* Python (tested version: 2.7.5)
+
 **1. download data from dbGaP**
 ```bash
 $ prefetch --option-file sra_list.txt
 
-# an example for `sra_list.txt`:
+# an example for `sra_list.txt`(all the srr samples in a subject):
 SRR7560855
 SRR7560856
 SRR7560857
@@ -48,6 +52,7 @@ $ for i in *.sra
     fastq-dump --split-files --gzip $i
   done
 
+# left and right reads
 $ cat *_1.fastq.gz >SUBJECTID_1.fastq.gz
 $ cat *_2.fastq.gz >SUBJECTID_2.fastq.gz
 ```
@@ -67,13 +72,45 @@ $ metaspades.py -1 /work/TEDDY/ncbi/dbGaP-21828/sra/SUBJECTID/SUBJECTID_1_.fastq
                 -o SUBJECTID \
                 -t 20  
 ```
-The default memorial is 250G, if you need a larger one, please add a parameter setting like -m 500 to 500G.
+The default memorial is 250G, if you need a larger one, please add a parameter setting like `-m 500` to 500G. 
 
-**2. N50, N90 Calculation (BBtools)**
-```bash
-$ stats.sh in=assembly_scaffolds.fasta out=assembly_data_stats
-```
-## Abundance Calculation for each scaffold
+**Notes:** Output is a directory `SUBJECTID`, which including several output files from metaspades assembly process. 
+In this directory,  `scaffolds.fasta` file is the co-assemblied metagenome in this subject, and was used in the following analysis.
+
+
+##
+
+**Script `abundanceANDbinning.batch` is to calculate the read counts and RPKM abundance for each scaffold in a subject, 
+and then do genome binning. The instructions of this batch script are as follows.**
+
+**Requirments:**
+
+* pullseq (tested v1.0.2)
+* Bowtie2 (tested v2.3.5.1)
+* samtools (tested v0.1.19)
+* shrinksam (tested v0.9.0)
+* MetaBAT 2 (tested v2.12.1)
+* CheckM (tested v1.1.2)
+* HMMER (tested 3.2.1)
+* pplacer (tested 1.1.alpha19)
+* python v2.7
+
+The inputs used in this batch script are `SUBJECTID_scaffolds.fasta` from above assembly process,
+fastq files for each SRA run sample (from the above download process),
+`SUBJECTID_srr.txt` including all the SRA accessions in this subject,
+`total_reads` including the total sequencing reads of each SRA run (obtained from the log file in download process).
+
+`parse_scaffold_rpkm.py` script is used when runing this batch script, needs to give a full path in the batch script 
+or put into one of your $PATH directories.
+
+The main outputs are `mapped.counted.result` file that shows read counts of each scaffold,
+`(srrID)_rpkm.txt`file that shows rpkm abundance of each scaffold,
+`output_bin` directory that includes all the binned genomes (MAGs),
+`checkm_wf_out` checkM output directory.
+
+
+## Abundance Calculation for each scaffold in a subject ##
+
 **1. fillter scaffolds**
 ```bash
 #Select scaffolds that sequence length > 1000; 
@@ -138,6 +175,29 @@ $ Python parse_scaffold_rpkm.py mapped.counted.result total_reads_file srrID
 **Important notes: Here we only got RPKM for each scaffold; 
 For the proteins in the same scaffod, they should have the same RPKM with this scaffold.**
 
+## Genome binning
+**1.sam to sorted bam for binning**
+```bash
+$ samtools view -bS SUBJECTID_eachSRR_alignment.sam -@ 19 > SUBJECTID_eachSRR_alignment.bam
+$ samtools sort SUBJECTID_eachSRR_alignment.bam  -@ 19 -o SUBJECTID_eachSRR_sorted > SUBJECTID_eachSRR_sorted.bam
+
+# SUBJECTID_eachSRR_alignment.sam is from Bowtie2 output result in read mapping process.
+```
+**2. metabat binning**
+```bash
+$ jgi_summarize_bam_contig_depths --outputDepth output_depth.txt *_sorted.bam
+# *_sorted.bam are the bam files from the same subjects.
+
+$ metabat -i sequence_min1000.fasta -o output_bin -a output_depth.txt -m 2000
+
+# output_bins is the directory including all the binned genomes, each genome in a file.
+```
+**3. qualtify for the binned genomes**
+```bash
+$ checkm lineage_wf -f CheckM.txt -t 10 -x fa --pplacer_threads 1 output_bins checkm_wf_out 
+```
+
+
 ## Protein prediction and read counts for each protein (ORF) 
 1. Protein prediction through `Prodigal`
 
@@ -146,7 +206,7 @@ $ prodigal -i sequence_min1000.fasta -p meta -a trans_protein.fasta -f gff -o pr
 
 # two output files: 
 trans_protein.fasta (protein translations file); 
-predicted.gff (inforamtion for each CDS, we will use the CDS length) 
+predicted.gff (inforamtion for each CDS, we will use the CDS length to get the protein abundance) 
 ```
 **2.1 Map scaffold RPKM to each protein that located in this scaffold.**
 
@@ -180,25 +240,6 @@ $ python creat_RXN_dictionary.py Metacyc_protein_top5hit.blst Metacyc_protein_RX
 ```
 For more information: https://github.com/thepanlab/Seq2MAG/blob/master/annotation/metacyc/metacyc_annotation.md
 
-## Genome binning
-**1.sam to sorted bam for binning**
-```bash
-$ samtools view -bS SUBJECTID_eachSRR_alignment.sam -@ 19 > SUBJECTID_eachSRR_alignment.bam
-$ samtools sort SUBJECTID_eachSRR_alignment.bam  -@ 19 -o SUBJECTID_eachSRR_sorted > SUBJECTID_eachSRR_sorted.bam
-
-# SUBJECTID_eachSRR_alignment.sam is from Bowtie2 output result in read mapping process.
-```
-**2. metabat binning**
-```bash
-$ jgi_summarize_bam_contig_depths --outputDepth output_depth.txt *_sorted.bam
-# *_sorted.bam are the bam files from the same subjects.
-
-$ metabat -i sequence_min1000.fasta -o output_bin -a output_depth.txt -m 2000
-```
-**3. qualtify for the binned genomes**
-```bash
-$ checkm lineage_wf -f CheckM.txt -t 10 -x fa --pplacer_threads 1 input_fold_includes_Bins checkm_wf_out  
-```
 
 
 
