@@ -203,7 +203,7 @@ $ checkm lineage_wf -f CheckM.txt -t 10 -x fa --pplacer_threads 1 output_bins ch
 ## Protein prediction and read counts for each protein (ORF) 
 **1. Protein prediction through `Prodigal`**
 
-The batch script is `prodigal.batch`, The Requirment is **Prodigal v2.6.3**
+The batch script is `prodigal.batch`, The Requirment is **Prodigal (tested v2.6.3)**
 
 ```bash
 $ prodigal -i SUBJECTID_scaffolds_min1000.fasta \
@@ -292,4 +292,19 @@ $ cd-hit-2d -i nr_40_0.9 \
             -c 0.4 -n 2  -d 0  -g 1 -p 1 -T 30 -M 0 -G 0 -aS 0.9 > nr_40_0.9_fragment.log
 
 ```
+
+
+## Other scripts ##
+* `parse_protein_length.py` get each protein length from .gff files.
+* `parse_cluster_abundance_readcounts.py` get the read counts of each protein cluster in each sample.
+* `parse_cluster_abundance_rpkm.py` get the RPKM anundance of each protein cluster in each sample.
+* `GLMM_sh.R` performm GLMM statisctical comparison between IA and controls.
+* `SIGclusters2MAGs.py` map the statistically significant protein clusters into high quality MAGs.
+* `MAG_row_fisher.R` perform fisher's exact test to find the enrichment of the 
+                     IA-associated protein clusters in MAGs level. 
+* `gtdbtk.batch` taxonomy assignment for MAGs using GTDB-Tk (tested v1.3.0).
+* `ANIcalculator.batch` gANI calculation using ANIcalculator (tested ANIcalculator v1.0).
+* `compare_with_EBI_IGGdb.batch` compare the high-quality MAGs with MAGs in EBI and IGGdb 
+                                 using mash (tested Mash v2.2)
+*  `aldex_module.R` KEGG module comparison between genome groups using ALDEx2.
 
