@@ -21,7 +21,7 @@ tar -zxvvf mags-gut_qs50.tar.gz
 wget -c ftp://ftp.ebi.ac.uk/pub/databases/metagenomics/umgs_analyses/mags-gut_qs50_checkm.tab
 
 
-# 39891 high quality MAGs
+# 39891 high quality MAGs in Almeida et al. (2019)
 awk '{ if($3 > 90 && $4 < 5) { print }}' mags-gut_qs50_checkm.tab >HGM_high_quality.list
 
 
@@ -37,13 +37,16 @@ done <HGM_high_quality.list
 ls /scratch/lizhang12/HGM/Hgenomes/*.fa >HGM_sketch_list
 
 
-# sketch 883 species and EBI species
+# sketch 883 species and species in Almeida et al. (2019)
 mash sketch -l /work/TEDDY/binning/drep/compare/specie883.list
 mash sketch -l /scratch/lizhang12/HGM/HGM_sketch_list
 mash dist -p 40 -d 0.2 /scratch/lizhang12/HGM/HGM_sketch_list.msh specie883.list.msh >specie883_HGM_0.8.dist
 
 
-# sketch IGGdb species
-mash sketch -l igg_gut_2935.list
+# sketch species in Nayfach et al. (2019)
+mash sketch -l igg_gut_2935_highQuality.list
 mash dist -p 40 -d 0.2 igg_gut_2935.list.msh specie883.list.msh >specie883_IGG_0.8.dist
 
+# sketch species in Pasolli et al. (2019)
+mash sketch -l Pasolli_et_al.Cell_highQuality.list
+mash dist -p 40 -d 0.2 Pasolli_et_al.Cell_4930.list.msh specie883.list.msh >specie883_Pasolli_et_al.Cell_0.8.dist
