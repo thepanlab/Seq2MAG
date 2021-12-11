@@ -1,0 +1,39 @@
+#!/bin/sh
+#SBATCH --partition=normal
+#SBATCH --qos=regular
+#SBATCH	--exclude=c660,c661,c651
+#SBATCH --nodes=1
+#SBATCH --time=5:00:00
+#SBATCH --mem=5G
+#SBATCH --job-name=prodigal
+#SBATCH --output=prodigal_%J_stdout.txt
+#SBATCH --error=prodigal_%J_stderr.txt
+#SBATCH --mail-user=lizhang12@ou.edu
+#SBATCH --workdir=/work/TEDDY/cluster/tem_sca
+
+echo Running on host `hostname`
+echo Starting Time is `date`
+echo Directory is `pwd`
+starttime=$(date +"%s")
+
+
+# select scaffolds that sequence length > 1000; predicte proteins using prodigal; rename each protein
+for i in *_scaffolds.fasta
+do
+
+pullseq -i $i -m 1000 > ${i%.fasta}_min1000.fasta
+
+prodigal -a ${i%.fasta}_min1000_protein.fasta -i ${i%.fasta}_min1000.fasta  -p meta -f gff -o ${i%.fasta}_min1000_predicted.gff 
+
+sed -i 's/>NODE/>'${i%_scaffolds.fasta}'_NODE/g' ${i%.fasta}_min1000_protein.fasta
+
+done
+
+
+
+echo Ending time is $(date)
+endtime=$(date +"%s")
+diff=$(($end
+time - $starttime))
+echo Elapsed time is $(($diff/60)) minutes and $(($diff%60)) seconds.
+
