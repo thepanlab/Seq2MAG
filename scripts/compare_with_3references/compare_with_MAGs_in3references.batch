@@ -50,3 +50,13 @@ mash dist -p 40 -d 0.2 igg_gut_2935.list.msh specie883.list.msh >specie883_IGG_0
 # sketch species in Pasolli et al. (2019)
 mash sketch -l Pasolli_et_al.Cell_highQuality.list
 mash dist -p 40 -d 0.2 Pasolli_et_al.Cell_4930.list.msh specie883.list.msh >specie883_Pasolli_et_al.Cell_0.8.dist
+
+# select the best hit in each reference genomes, and then calculate the ANI using ANIcalculation
+
+python select_best_hit.py
+
+
+# output the table including mapping information with three reference genomes
+
+python parse_venn.py
+
