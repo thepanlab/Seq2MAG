@@ -303,7 +303,13 @@ and `clstr_rev.pl` was used to merge the clusters in three levels.
                      IA-associated protein clusters in MAGs level. 
 * `gtdbtk.batch` taxonomy assignment for MAGs using GTDB-Tk (tested v1.3.0).
 * `ANIcalculator.batch` gANI calculation using ANIcalculator (tested ANIcalculator v1.0).
-* `compare_with_EBI_IGGdb.batch` compare the high-quality MAGs with MAGs in EBI and IGGdb 
-                                 using mash (tested Mash v2.2)
 *  `aldex_module.R` KEGG module comparison between genome groups using ALDEx2.
+   
+   **compare teddy MAGs with three references:**
+*  `compare_with_MAGs_in3references.batch` compare the high-quality MAGs with MAGs in Almeida et al. 2019;
+    Nayfach et al. 2019; Pasolli et al. 2019 and using mash (tested Mash v2.2)
+*  `select_best_hit.py` select the best hit in each reference genomes, and then calculate the ANI 
+                        using ANIcalculation
+*  `parse_venn.py` output the table including mapping information with three reference genomes
+    
 
