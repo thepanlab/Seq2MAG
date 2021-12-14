@@ -304,6 +304,7 @@ and `clstr_rev.pl` was used to merge the clusters in three levels.
 * `gtdbtk.batch` taxonomy assignment for MAGs using GTDB-Tk (tested v1.3.0).
 * `ANIcalculator.batch` gANI calculation using ANIcalculator (tested ANIcalculator v1.0).
 *  `aldex_module.R` KEGG module comparison between genome groups using ALDEx2.
+*  `phylolm_analysis.r` Phylogenetic regression analysis.
    
    **compare teddy MAGs with three references:**
 *  `compare_with_MAGs_in3references.batch` compare the high-quality MAGs with MAGs in Almeida et al. 2019;
