@@ -1,0 +1,138 @@
+---
+title: "make KO abundance table over order and time"
+author: "xyz"
+date: "2021/8/17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(readxl)
+library(stringr)
+library(tidyr)
+library(xlsx)
+library(vegan)
+```
+
+# PCA
+
+```{r}
+eset.f <- as.data.frame(readRDS("../only protein with KEGG/eset.f.rds"))
+abundance<-cbind.data.frame(Protein=rownames(eset.f),eset.f)
+speciesDf <-
+  read_xlsx("../SuppTable 5 Protein Family Annotation(1).xlsx")
+speciesDf <-
+  data.frame(Protein = speciesDf[-1:-2, 1, drop = TRUE],
+             KO = speciesDf[-1:-2, 4, drop = TRUE],
+             Tax = speciesDf[-1:-2, 6, drop = TRUE])
+speciesDf$Tax <- str_split(speciesDf$Tax,";",simplify = T)[,4]
+top10<-sort(table(speciesDf$Tax),decreasing = T)
+top10<-top10[c(1,2,4,5,6,7,8,9,10,11)]
+speciesDf<-speciesDf[speciesDf$Tax %in% names(top10),]
+
+abundanceDf <-
+  right_join(speciesDf, abundance, by = c("Protein" = "Protein"))
+abundanceDf <- abundanceDf[!is.na(abundanceDf$Tax),]
+abundanceDf <-separate_rows(abundanceDf, KO, sep = ",")
+abundanceDf <- abundanceDf[abundanceDf$Tax!="" & abundanceDf$Tax!="unknown",-1]
+abundanceDf <- group_by(abundanceDf, KO, Tax)
+abundanceDf <- summarise(abundanceDf,across(everything(),sum))
+abundanceDf <- pivot_wider(abundanceDf,KO,names_from = Tax, values_from = T3_5:T30_35)
+abundanceDf[is.na(abundanceDf)]<-0
+abundanceDf <- as.data.frame(abundanceDf)
+rownames(abundanceDf)<- abundanceDf$KO
+abundanceDf <- prop.table(as.matrix(abundanceDf[,-1]),2)
+
+meta <- as.data.frame(str_split(colnames(abundanceDf),"_",simplify = T))
+meta$V1<-paste0(meta$V1,"_",meta$V2)
+meta<- meta[,-2]
+colnames(meta)<-c("Time","Order")
+meta$Time<-factor(meta$Time,levels = colnames(eset.f))
+pca<-rda(t(abundanceDf),scale=T)
+importance <- summary(pca)[["cont"]][["importance"]]
+siteScore <- summary(pca)[["sites"]]
+tempDf <- cbind(x = siteScore[, 1],
+                y = siteScore[, 2],
+                meta)
+
+p <- ggplot(tempDf,
+              aes(
+                x = x,
+                y = y,
+                color = Time, shape=Order
+              )) +
+  scale_shape_manual(values = 1:10) +
+  geom_point(size = 3) +
+  xlab(paste0("Functional Profile PC1(", round(importance[2, 1] * 100, 2), "%)")) +
+  ylab(paste0("Functional Profile PC2(", round(importance[2, 2] * 100, 2), "%)")) +
+  theme(
+    text = element_text(size = 15),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    panel.border = element_rect(
+      fill = NA,
+      color = "grey10",
+      linetype = 1,
+      size = 0.7
+    )
+  )
+p + ggsave("KO over time and Order PCA.pdf",width = 8, height = 6)
+```
+
+# chisqure test
+
+all p is 1
+
+```{r}
+Order<-unique(meta$Order)
+chiResult<-data.frame()
+for (i in Order){
+  testTable<-abundanceDf[,meta$Order==i]
+  testTable<-testTable[rowSums(testTable)>0,]
+  chi<-chisq.test(testTable)
+  chiResult<-rbind(chiResult,c("Order"=i,"p"=chi$p.value))
+}
+colnames(chiResult)<-c("Order","p")
+
+Time<-unique(meta$Time)
+chiResultTime<-data.frame()
+for (i in Time){
+  testTable<-abundanceDf[,meta$Time==i]
+  testTable<-testTable[rowSums(testTable)>0,]
+  chi<-chisq.test(testTable)
+  chiResultTime<-rbind(chiResultTime,c("Time"=i,"p"=chi$p.value))
+}
+colnames(chiResultTime)<-c("Time","p")
+```
+
+# MRPP
+
+Oder's difference is significant
+Time's difference is not
+
+```{r}
+# p=0.001
+mrpp(t(abundanceDf), meta$Order, distance = 'bray', permutations = 999)
+# p=1
+mrpp(t(abundanceDf), meta$Time, distance = 'bray', permutations = 999)
+```
+
+# species dist
+
+```{r}
+Clostridiales<-tempDf[tempDf$Order=="Clostridiales",]
+cloDist<-as.numeric(dist(Clostridiales[,1:2]))
+Enterobacterales<-tempDf[tempDf$Order=="Enterobacterales",]
+enDist<-as.numeric(dist(Enterobacterales[,1:2]))
+Bifidobacteriales<-tempDf[tempDf$Order=="Bifidobacteriales",]
+biDist<-as.numeric(dist(Bifidobacteriales[,1:2]))
+# p-value = 1.027e-08
+t.test(cloDist,biDist)
+```
+
+

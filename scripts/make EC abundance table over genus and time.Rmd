@@ -1,0 +1,79 @@
+---
+title: "make EC abundance table over genus and time"
+author: "xyz"
+date: "2021/8/17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(readxl)
+library(stringr)
+library(tidyr)
+library(xlsx)
+library(vegan)
+```
+
+```{r}
+eset.f <- as.data.frame(readRDS("../only protein with KEGG/eset.f.rds"))
+abundance<-cbind.data.frame(Protein=rownames(eset.f),eset.f)
+speciesDf <-
+  read_xlsx("../SuppTable 5 Protein Family Annotation(1).xlsx")
+speciesDf <-
+  data.frame(Protein = speciesDf[-1:-2, 1, drop = TRUE],
+             KO = speciesDf[-1:-2, 4, drop = TRUE],
+             Tax = speciesDf[-1:-2, 6, drop = TRUE])
+speciesDf$Tax <- str_split(speciesDf$Tax,";",simplify = T)[,2]
+
+abundanceDf <-
+  right_join(speciesDf, abundance, by = c("Protein" = "Protein"))
+abundanceDf <-separate_rows(abundanceDf, KO, sep = ",")
+abundanceDf <- abundanceDf[abundanceDf$Tax!="" & abundanceDf$Tax!="unknown",-1]
+abundanceDf <- group_by(abundanceDf, KO, Tax)
+abundanceDf <- summarise(abundanceDf,across(everything(),sum))
+abundanceDf <- pivot_wider(abundanceDf,KO,names_from = Tax, values_from = T3_5:T30_35)
+abundanceDf[is.na(abundanceDf)]<-0
+abundanceDf <- as.data.frame(abundanceDf)
+rownames(abundanceDf)<- abundanceDf$KO
+abundanceDf <- prop.table(as.matrix(abundanceDf[,-1]),2)
+
+meta <- as.data.frame(str_split(colnames(abundanceDf),"_",simplify = T))
+meta$V1<-paste0(meta$V1,"_",meta$V2)
+meta<- meta[,-2]
+colnames(meta)<-c("Time","Phylum")
+pca<-rda(t(abundanceDf),scale=T)
+importance <- summary(pca)[["cont"]][["importance"]]
+siteScore <- summary(pca)[["sites"]]
+tempDf <- cbind(x = siteScore[, 1],
+                y = siteScore[, 2],
+                meta)
+
+p <- ggplot(tempDf,
+            aes(
+              x = x,
+              y = y,
+              color = Time,
+              shape = Phylum
+            )) +
+  geom_point(size = 3) +
+  xlab(paste0("PC1(", round(importance[2, 1] * 100, 2), "%)")) +
+  ylab(paste0("PC2(", round(importance[2, 2] * 100, 2), "%)")) +
+  theme(
+    text = element_text(size = 15),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    panel.border = element_rect(
+      fill = NA,
+      color = "grey10",
+      linetype = 1,
+      size = 0.7
+    )
+  )
+p + ggsave("KO over time and Phylum PCA.pdf",width = 8, height = 6)
+```
+

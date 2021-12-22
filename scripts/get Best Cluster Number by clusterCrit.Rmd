@@ -1,0 +1,152 @@
+---
+title: "get Best Cluster Number by clusterCrit"
+author: "xyz"
+date: "2021/8/9"
+output: html_document
+---
+
+```{r}
+library(Mfuzz)
+library(ggplot2)
+library(clusterCrit)
+library(tidyr)
+```
+
+```{r}
+data <-
+  read.table(
+    "../old_version/time_merge.rpkm.tsv",
+    head = T,
+    sep = "\t",
+    stringsAsFactors = F,
+    row.names = 1
+  )
+rt <- as.matrix(data)
+eset <- new("ExpressionSet", exprs = rt)
+eset.r <- filter.NA(eset, thres = 0.25)
+eset.f <- fill.NA(eset.r, mode = "mean")
+eset.f <- filter.std(eset.f, min.std = 0)
+eset.s <- standardise(eset.f)
+eset.m <- t(as.data.frame(eset.s))
+
+m <- mestimate(eset.s)
+ixs <- c()
+for (c in 4:20) {
+  set.seed(9527)
+  cl <- mfuzz(eset.s, c = c, m = m)
+  ix <- unlist(intCriteria(eset.m,cl$cluster,"all"))
+  ixs <- c(ixs, ix)
+}
+ixname <- names(ixs[1:42])
+ixs <- matrix(ixs, ncol = 42, byrow = T)
+colnames(ixs) <- ixname
+ixs <- as.data.frame(ixs)
+bestK<-c()
+for (i in ixname){
+  bestK<-c(bestK,bestCriterion(ixs[,i],i))
+}
+bestK<-bestK+3
+names(bestK)<-ixname
+
+bestK
+
+ixsLong <- as.data.frame(scale(ixs))
+ixsLong <- cbind(x = 4:20, ixsLong)
+ixsLong <- pivot_longer(ixsLong, -x, names_to = "Index", values_to = "y")
+
+p <- ggplot(ixsLong, aes(x = x, y = y)) +
+  geom_line() +
+  geom_point() +
+  xlab("Number of clusters") +
+  ylab("Index") +
+  scale_x_continuous(breaks = seq(2,20,by=2))+
+  facet_wrap(vars(Index), ncol = 5) +
+  theme(
+    text = element_text(size = 15),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    panel.border = element_rect(
+      fill = NA,
+      color = "grey10",
+      linetype = 1,
+      size = 1.
+    )
+  )
+
+p+ggsave("All Indexes.pdf",width = 12,height = 12)
+
+df<-data.frame(x=4:20,y=c(ixs$ball_hall))
+p<-ggplot(df,aes(x=x,y=y))+
+  geom_line()+
+  geom_point()+
+  xlab("Number of clusters")+
+  ylab("Total within-clusters sum of squares")+
+  theme(
+    text = element_text(size = 15),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    panel.border = element_rect(
+      fill = NA,
+      color = "grey10",
+      linetype = 1,
+      size = 1.
+    ))
+p+ggsave("ball_hall Index.pdf",width = 8,height = 6)
+
+df<-data.frame(x=5:19,y=diff(diff(ixs$ball_hall)))
+xintercept <- 7
+yintercept <- df[df$x==7,2]
+noteLineDf <-
+  data.frame(
+    x1 = c(xintercept, -Inf),
+    x2 = c(xintercept,xintercept),
+    y1 = c(-Inf, yintercept),
+    y2 = c(yintercept, yintercept)
+  )
+p <- ggplot(df, aes(x = x, y = y)) +
+  geom_line() +
+  geom_point() +
+  xlab("Number of clusters") +
+  # ylab("Slope difference of Ball Hall Index") +
+  ylab("Ball Hall index") +
+  geom_segment(aes(
+    x = x1,
+    y = y1,
+    xend = x2,
+    yend = y2,
+  ),
+  data = noteLineDf,
+  linetype = 4) +
+  scale_x_continuous(breaks = c(5, xintercept , 8, 12, 16, 19)) +
+  scale_y_continuous(breaks = round(c(0, 0.05, 0.1, 0.15, yintercept),2)) +
+  theme(
+    text = element_text(size = 15),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    panel.border = element_rect(
+      fill = NA,
+      color = "grey10",
+      linetype = 1,
+      size = 1.
+    )
+  )
+p+ggsave("ball_hall Index Second difference.pdf",width = 8,height = 6)
+```
+
+```{r}
+set.seed(9527)
+cl <- mfuzz(eset.s, c = 7, m = m)
+pdf("mfuzz clust 7.pdf",width = 15,height = 9)
+mfuzz.plot(
+  eset.s,
+  cl,
+  mfrow = c(2, 4),
+  new.window = FALSE,
+  min.mem = 0.5
+)
+dev.off()
+proteinCluster7<-cl$cluster
+proteinCluster7<-data.frame(Protein=names(proteinCluster7),Cluster=proteinCluster7)
+saveRDS(proteinCluster7,"proteinCluster7.rds")
+```
+
