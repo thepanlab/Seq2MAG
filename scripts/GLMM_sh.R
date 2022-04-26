@@ -27,7 +27,7 @@ data = data[-1,] #remove the first row
 data = as.data.frame(data) #make it a data frame
 
 #Fixed effects and random effects
-mixed_effects = c('age_at_collection', 'delivery_simple','cc','breastfeeding', 'solid_food', 'pre_after_IA', 'dbgap_maskid')
+mixed_effects = c('age_at_collection', 'delivery_simple','cc','breastfeeding', 'solid_food', 'HLA_Category','pre_after_IA', 'dbgap_maskid')
 fixed_effects = mixed_effects[-which(mixed_effects == c('dbgap_maskid'))]
 
 #result settings
