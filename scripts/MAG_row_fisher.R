@@ -12,15 +12,13 @@ row_fisher <- function(row, alt = 'greater', cnf = 0.95) {
 }
 
 # generate sample data
-data_in <- read.table("MAG_sum_out_E-6_coeff_Ncluster.tsv",head=T,sep="\t",stringsAsFactors=F)
+data_in <- read.table("MAG_sum_coeff_Ncluster.tsv",head=T,sep="\t",stringsAsFactors=F)
 row.names(data_in) <- data_in$MAG_name
 data_in$background_total <- 64142
-data_in$background_up <- 2355
-data_in$background_down <- 2504
+data_in$background_up <- 2190
+data_in$background_down <- 3156
 analysis_data <- subset(data_in, select=c(Cup_core,background_up,core_Cnumbers,background_total))
 #analysis_data <- subset(data_in, select=c(Cdown_core,background_down,core_Cnumbers,background_total))
-
-#a: MAG_up; b: background_up; c: MAG_total; D: background_total
 
 # run
 p <- data.frame(t(apply(analysis_data, 1, row_fisher)))
