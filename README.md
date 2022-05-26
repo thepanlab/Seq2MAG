@@ -62,7 +62,7 @@ Therefore, we also merged the fastq files from the same subject.
 
 **3. PreProcess the Raw Data**
 
-The metagenomics data from this dbGaP Study (phs001443.v1.p1) is well proprocessed with quality control and removing human genome sequences.
+The metagenomics data from this dbGaP Study (phs001442) is well proprocessed with quality control and removing human genome sequences.
 If your data is the raw sequencing data without preprocess, BBtools could be used to do this step.
 ## Assembly using metaspades ##
 ```bash
